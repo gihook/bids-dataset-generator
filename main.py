@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from file_utils import get_bid_files
 
 FOLDER_PATH = "raw-day-light/"
@@ -43,12 +44,54 @@ def cropped_image(image):
     return result[y:y+h, x:x+w, :]
 
 
+def bid_section(image):
+    return image[20:210, 250:380, :]
+
+
+def draw(image):
+    cv2.imshow('result', image)
+    cv2.waitKey()
+
+
+def solidity(contour):
+    contour_area = cv2.contourArea(contour)
+    hull = cv2.convexHull(contour)
+    hull_area = cv2.contourArea(hull)
+
+    if hull_area == 0:
+        return 0
+
+    ratio = contour_area / hull_area
+
+    return ratio
+
+
 files = get_bid_files(FOLDER_PATH)
+
 
 for file in files:
     image = cv2.imread(file)
     image = prepare_image(image)
 
     cropped = cropped_image(image)
-    cv2.imshow('result', cropped)
-    cv2.waitKey()
+    bid_image = bid_section(cropped)
+    blured = cv2.GaussianBlur(bid_image, (3, 3), cv2.BORDER_DEFAULT)
+    gray = cv2.cvtColor(blured, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY_INV)
+
+    contours, _ = cv2.findContours(
+        thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contours = filter(lambda c: solidity(c) > 0, contours)
+    contours = sorted(contours, key=lambda c: cv2.minAreaRect(c), reverse=True)
+    contours = list(contours)
+
+    single_contour = np.concatenate(contours)
+    single_hull = cv2.convexHull(single_contour)
+
+    result = cv2.drawContours(
+        bid_image.copy(), [single_hull], 0, (0, 255, 0), 2)
+
+    draw(result)
+
+    # draw(result)
