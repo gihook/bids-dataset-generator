@@ -69,12 +69,8 @@ def solidity(contour):
 files = get_bid_files(FOLDER_PATH)
 
 
-for file in files:
-    image = cv2.imread(file)
-    image = prepare_image(image)
-
-    cropped = cropped_image(image)
-    bid_image = bid_section(cropped)
+def get_convex_hull(image):
+    bid_image = bid_section(image)
     blured = cv2.GaussianBlur(bid_image, (3, 3), cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(blured, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY_INV)
@@ -89,9 +85,15 @@ for file in files:
     single_contour = np.concatenate(contours)
     single_hull = cv2.convexHull(single_contour)
 
-    result = cv2.drawContours(
-        bid_image.copy(), [single_hull], 0, (0, 255, 0), 2)
+    return single_hull + (250, 20)
+
+
+for file in files:
+    image = cv2.imread(file)
+    image = prepare_image(image)
+    image = cropped_image(image)
+
+    hull = get_convex_hull(image)
+    result = cv2.drawContours(image.copy(), [hull], 0, (0, 255, 0), 2)
 
     draw(result)
-
-    # draw(result)
